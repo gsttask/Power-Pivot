@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sales Cube Pivot Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",Tahoma,sans-serif;background:#f4f6f9;display:flex;flex-direction:column;height:100vh;overflow:hidden;font-size:13px}
+
+/* ── Button Bar ── */
+#btn-bar{background:#2c3e50;padding:6px 10px;display:flex;align-items:center;gap:5px;flex-shrink:0;flex-wrap:nowrap}
+.btn{padding:5px 10px;border:none;border-radius:3px;color:white;font-size:11.5px;font-weight:bold;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+.btn:hover{opacity:.85}.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-red{background:#e74c3c}.btn-blue{background:#3498db}.btn-green{background:#27ae60}
+.btn-teal{background:#1abc9c}.btn-orange{background:#d35400}.btn-gray{background:#636e72}
+.btn-yellow{background:#f39c12}.btn-purple{background:#8e44ad}
+.sep{width:1px;height:22px;background:#4a6278;margin:0 2px;flex-shrink:0}
+#search-wrap{display:flex;align-items:center;gap:3px;margin-left:4px}
+#search-wrap span{color:#94a3b8;font-size:11px;white-space:nowrap}
+#search-box{background:#3d5166;border:none;color:white;padding:4px 7px;border-radius:3px;font-size:11px;width:120px}
+#search-box::placeholder{color:#94a3b8}
+#status-lbl{margin-left:auto;color:#cbd5e0;font-size:11px;white-space:nowrap;text-align:right;min-width:auto;margin-right:8px;}
+
+/* ── Progress ── */
+#progress{height:3px;background:#1a252f;flex-shrink:0}
+#progress-fill{height:100%;background:#3498db;width:0;transition:width .3s}
+.is-loading #progress-fill{animation:prog 1.2s ease-in-out infinite}
+@keyframes prog{0%{width:0;margin-left:0}50%{width:60%;margin-left:20%}100%{width:0;margin-left:100%}}
+
+/* ── Path Bar ── */
+#load-bar{display:flex;gap:5px;align-items:center;padding:4px 8px;background:#fff;border-bottom:1px solid #ddd;flex-shrink:0}
+#load-bar input{flex:1;padding:3px 7px;border:1px solid #ccc;border-radius:3px;font-size:11px;font-family:monospace}
+
+/* ── Workspace ── */
+#workspace{display:flex;gap:7px;padding:7px;flex-shrink:0;height:295px}
+
+/* Left panel */
+#left-panel{width:195px;flex-shrink:0;display:flex;flex-direction:column;background:white;border-radius:4px;border:1px solid #ddd;overflow:hidden}
+.panel-hdr{background:#dfe6e9;padding:4px 7px;font-size:11px;font-weight:bold;color:#2c3e50;border-bottom:1px solid #ccc;display:flex;align-items:center;justify-content:space-between}
+#avail-list{flex:1;overflow-y:auto;padding:2px;list-style:none;user-select:none}
+#avail-list li{padding:2px 6px;cursor:pointer;border-radius:2px;font-size:11.5px;display:flex;align-items:center;gap:3px}
+#avail-list li:hover{background:#ecf0f1}
+#avail-list li.sel{background:#3498db;color:white}
+.type-badge{font-size:9px;padding:1px 3px;border-radius:2px;color:white;flex-shrink:0}
+.type-NUM{background:#27ae60}.type-DATE{background:#e67e22}.type-TEXT{background:#74b9ff;color:#2c3e50}
+
+/* 4 Zones */
+#right-panel{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:5px}
+.zone{display:flex;flex-direction:column;border-radius:4px;border:1px solid #ccc;overflow:hidden}
+.zone-rows,.zone-cols{background:#ecf0f1}
+.zone-vals{background:#d5f5e3}.zone-filters{background:#ebdef0}
+.zone-hdr{padding:3px 6px;font-size:11px;font-weight:bold;color:#2c3e50;border-bottom:1px solid #ccc;display:flex;align-items:center;gap:3px}
+.zone-hdr span{flex:1}
+.zh-btn{width:17px;height:17px;border:none;border-radius:2px;cursor:pointer;font-size:10px;background:#b2bec3;color:white;flex-shrink:0;transition:background .15s;display:flex;align-items:center;justify-content:center}
+.zh-btn:hover{background:#636e72}
+.zone-body{flex:1;overflow-y:auto;list-style:none;padding:1px;min-height:0}
+.zone-body li{padding:2px 6px;font-size:11.5px;display:flex;align-items:center;gap:3px;border-radius:2px;cursor:pointer;user-select:none}
+.zone-body li:hover{background:rgba(0,0,0,.07)}
+.zone-body li .fmark{font-size:9px;color:#e74c3c;font-weight:bold}
+.zone-body li .lmark{font-size:9px;color:#8e44ad;font-weight:bold}
+.zone-body li .dmark{font-size:9px;color:#e67e22}
+.zone-body li .rm{margin-left:auto;opacity:0;color:#e74c3c;font-size:11px;font-weight:bold;line-height:1;padding-left:4px}
+.zone-body li:hover .rm{opacity:1}
+.ghost{opacity:.4}
+
+/* ── Action Bar ── */
+#act-bar{background:#34495e;padding:5px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#lbl-rows{color:#94a3b8;font-size:11px}
+
+/* ── Grid ── */
+#grid-area{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+#grid-info{padding:2px 10px;font-size:11px;color:#636e72;background:#f8f9fa;border-bottom:1px solid #ddd;flex-shrink:0}
+#grid-wrap{flex:1;overflow:auto;background:white;margin:4px 7px 7px;border-radius:4px;border:1px solid #ddd}
+table.dtbl{border-collapse:collapse;width:100%;font-size:11.5px}
+table.dtbl th{background:#dfe6e9;padding:5px 9px;text-align:left;position:sticky;top:0;z-index:10;border-bottom:2px solid #b2bec3;font-weight:bold;white-space:nowrap;cursor:pointer}
+table.dtbl th:hover{background:#c8d6e5}
+table.dtbl th.asc::after{content:" ▲";font-size:8px}
+table.dtbl th.desc::after{content:" ▼";font-size:8px}
+table.dtbl td{padding:3px 9px;border-bottom:1px solid #f1f2f6;white-space:nowrap}
+table.dtbl tr:nth-child(even) td{background:#f8f9fa}
+table.dtbl tr:hover td{background:#eaf4fb}
+table.dtbl tr.grand-total td{background:#2c3e50!important;color:white;font-weight:bold}
+table.dtbl td.num{text-align:right;font-variant-numeric:tabular-nums}
+#no-data{display:flex;align-items:center;justify-content:center;height:120px;color:#94a3b8;font-size:13px}
+
+/* --- Login Box Styling --- */
+#login-modal { background: #1a202c; z-index: 10000; }
+.login-box { width: 320px; background: white; padding: 25px; border-radius: 8px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+.login-box h2 { margin-bottom: 15px; color: #2c3e50; font-size: 18px; }
+.login-box input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+#login-err { color: #e74c3c; font-size: 12px; margin-top: 10px; min-height: 15px; }
+.user-row { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; }
+
+/* ══ MODALS ══ */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000}
+.mbox{background:white;border-radius:6px;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.3);max-height:90vh}
+.mhdr{padding:10px 15px;background:#2c3e50;color:white;font-weight:bold;border-radius:6px 6px 0 0;font-size:13px;flex-shrink:0}
+.mbody{padding:12px 15px;overflow-y:auto;flex:1}
+.mftr{padding:9px 15px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:7px;flex-shrink:0}
+
+/* Browser */
+.bpath{padding:6px 11px;background:#f8f9fa;border-bottom:1px solid #eee;font-family:monospace;font-size:11px;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.blist{overflow-y:auto;flex:1}
+.bitem{padding:6px 11px;display:flex;align-items:center;gap:7px;cursor:pointer;border-bottom:1px solid #f4f4f4;font-size:12px}
+.bitem:hover{background:#ecf0f1}
+.bitem.parquet{color:#27ae60;font-weight:600}
+.bitem.excel{color:#2980b9;font-weight:600}
+.bitem .bsz{margin-left:auto;color:#94a3b8;font-size:11px}
+
+/* Filter */
+.fsearch{width:100%;padding:5px 7px;border:1px solid #ddd;border-radius:3px;font-size:12px;margin-bottom:7px}
+.fbtns{display:flex;gap:5px;margin-bottom:7px}
+.fcb-list{overflow-y:auto;max-height:280px;border:1px solid #eee;border-radius:3px}
+.fcb-item{display:flex;align-items:center;gap:6px;padding:3px 7px;cursor:pointer;border-bottom:1px solid #f8f8f8;font-size:12px}
+.fcb-item:hover{background:#f8f9fa}
+
+/* Value Filter */
+.vf-row{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.vf-row label{font-size:12px;width:85px;flex-shrink:0;color:#555}
+.vf-row select,.vf-row input{flex:1;padding:4px 7px;border:1px solid #ddd;border-radius:3px;font-size:12px}
+
+/* Context Menu */
+#ctx{position:fixed;background:white;border:1px solid #ccc;border-radius:4px;box-shadow:3px 3px 10px rgba(0,0,0,.15);z-index:3000;min-width:180px;padding:3px 0}
+#ctx .ci{padding:5px 13px;cursor:pointer;font-size:12px}
+#ctx .ci:hover{background:#ecf0f1}
+#ctx .cs{height:1px;background:#eee;margin:3px 0}
+#ctx .ci.danger{color:#e74c3c}
+
+/* Excel2Parquet */
+.e2p-step{margin-bottom:12px}
+.e2p-step label{font-size:11px;font-weight:bold;color:#2c3e50;display:block;margin-bottom:4px}
+.cb-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;max-height:120px;overflow-y:auto;border:1px solid #eee;padding:5px;border-radius:3px}
+.cb-item{display:flex;align-items:center;gap:5px;font-size:11.5px;cursor:pointer}
+.e2p-out{display:flex;gap:5px;align-items:center}
+.e2p-out input{flex:1;padding:4px 7px;border:1px solid #ddd;border-radius:3px;font-size:11px;font-family:monospace}
+.merge-row{display:flex;align-items:center;gap:6px;font-size:12px;margin-top:8px}
+/* E2P column list with dtype */
+#e2p-cols-grid{height:230px;overflow-y:scroll;border:1px solid #eee;border-radius:3px}
+.e2p-col-item{display:flex;align-items:center;gap:5px;font-size:11px;padding:3px 7px;border-bottom:1px solid #f4f6f9}
+.e2p-col-item:hover{background:#f8f9fa}
+.col-type-badge{font-size:9px;color:#8e44ad;background:#f3e8ff;padding:1px 4px;border-radius:2px;white-space:nowrap;flex-shrink:0}
+
+/* VLookup Pro */
+.vl-hdr{background:#2563eb;color:white;padding:10px 14px;border-radius:5px;margin-bottom:12px}
+.vl-hdr h3{font-size:14px;margin-bottom:2px}
+.vl-hdr p{font-size:11px;opacity:.8}
+.vl-step{border:1px solid #e2e8f0;border-radius:5px;padding:10px;margin-bottom:10px}
+.vl-step-title{font-size:11px;font-weight:bold;color:#2c3e50;margin-bottom:8px}
+.vl-row{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.vl-row label{font-size:11px;color:#555;width:100px;flex-shrink:0}
+.vl-row select,.vl-row input{flex:1;padding:4px 7px;border:1px solid #ddd;border-radius:3px;font-size:11.5px}
+.vl-cols-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;max-height:130px;overflow-y:auto;border:1px solid #eee;padding:5px;border-radius:3px}
+
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="login-modal" class="overlay">
+  <div class="login-box">
+    <h2>Sales Cube Login</h2>
+    <input type="text" id="login-user" placeholder="Username" onkeydown="if(event.key==='Enter')$('login-pass').focus()">
+    <input type="password" id="login-pass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn btn-blue" style="width:100%; padding:10px; margin-top:10px" onclick="doLogin()">Login</button>
+    <div id="login-err"></div>
+  </div>
+</div>
+
+<div id="admin-modal" class="overlay hidden">
+  <div class="mbox" style="width:450px; height:70vh">
+    <div class="mhdr" style="display:flex; justify-content:space-between; align-items:center;">
+  <span>👥 User Management</span>
+  <button class="btn btn-yellow" style="font-size:10px; padding:3px 6px; color:black;" onclick="viewLogs()">📋 View Logs</button>
+</div>
+    
+    <div style="padding: 12px; background: #f8f9fa; border-bottom: 1px solid #ddd; display: flex; gap: 5px; flex-wrap: wrap;">
+      <input type="text" id="new-user" placeholder="New Username" style="flex:1; padding:6px; border:1px solid #ccc; border-radius:3px; font-size:12px;">
+      <input type="password" id="new-pass" placeholder="Password" style="flex:1; padding:6px; border:1px solid #ccc; border-radius:3px; font-size:12px;">
+      <select id="new-role" style="padding:6px; border:1px solid #ccc; border-radius:3px; font-size:12px;">
+        <option value="user">User</option>
+        <option value="admin">Admin</option>
+      </select>
+      <button class="btn btn-green" onclick="createUser()">➕ Add</button>
+    </div>
+    <div class="mbody" id="user-list-area" style="background:#fff">
+      </div>
+    <div class="mftr">
+      <button class="btn btn-gray" onclick="document.getElementById('admin-modal').classList.add('hidden')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="btn-bar">
+  </div>
+
+<!-- ══ BUTTON BAR ══ -->
+<div id="btn-bar">
+  <button class="btn btn-red"    onclick="openBrowser('file')">📂 File</button>
+  <button class="btn btn-blue"   onclick="openBrowser('folder')">🗂 Folder</button>
+  <button class="btn btn-green"  id="btn-scan"    onclick="scanNew()"       disabled>➕ Scan</button>
+  <button class="btn btn-teal"   onclick="openE2P()">⚡ Excel2Parquet</button>
+  <button class="btn btn-orange" id="btn-vlook"   onclick="openVlookup()"   disabled>🔗 VLookup Pro</button>
+  <button class="btn btn-purple" onclick="openAppendModal()">🔄 Append Parquet</button>
+  <div class="sep"></div>
+  <button class="btn btn-green"  id="btn-raw"     onclick="loadRaw()"       disabled>📊 Raw Data</button>
+  <button class="btn btn-gray"   id="btn-reset"   onclick="resetAll()"      disabled>🗑 Reset</button>
+  <button class="btn btn-gray"   onclick="toggleLoadBar()" title="Paste path">✏️ Path</button>
+  <div id="search-wrap">
+    <span style="cursor:help; border-bottom:1px dotted #94a3b8;" 
+          title="Click for info" 
+          onclick="alert('Searches ONLY within the currently generated Pivot table below.\n\nTo search the entire raw database, please use the Zone 1 or Zone 4 Filters.')">
+          ℹ️ Report Search:
+    </span>
+    <input id="search-box" placeholder="Search visible rows..." onkeydown="if(event.key==='Enter')doSearch()">
+    <button class="btn btn-blue" style="padding:4px 7px" onclick="doSearch()">🔍</button>
+  </div>
+  <span id="status-lbl">Ready.</span>
+</div>
+
+<!-- ══ PATH BAR ══ -->
+<div id="load-bar" class="hidden">
+  <span style="font-size:11px;color:#555;white-space:nowrap">File Path:</span>
+  <input id="path-input" placeholder="e.g.  C:/data/sales.parquet" onkeydown="if(event.key==='Enter')loadFromPath()">
+  <button class="btn btn-green" onclick="loadFromPath()">Load ▶</button>
+  <button class="btn btn-gray"  onclick="toggleLoadBar()">✕</button>
+</div>
+
+<!-- ══ PROGRESS ══ -->
+<div id="progress"><div id="progress-fill"></div></div>
+
+<!-- ══ WORKSPACE ══ -->
+<div id="workspace">
+
+  <div id="left-panel">
+    <div class="panel-hdr">
+      <span>Available Columns (Ctrl+Click)</span>
+      <span id="col-count" style="color:#636e72;font-size:10px"></span>
+    </div>
+    <ul id="avail-list"></ul>
+  </div>
+
+  <div id="right-panel">
+
+    <div class="zone zone-rows">
+      <div class="zone-hdr">
+        <span>1. Rows</span>
+        <button class="zh-btn" onclick="moveSelected('rows')" title="Add">➕</button>
+        <button class="zh-btn" onclick="moveItemUp('rows')"   title="Move Up">⬆️</button>
+        <button class="zh-btn" onclick="moveItemDown('rows')" title="Move Down">⬇️</button>
+        <button class="zh-btn" onclick="clearZone('rows')"    title="Clear">🗑</button>
+      </div>
+      <ul id="zone-rows" class="zone-body" data-zone="rows"></ul>
+    </div>
+
+    <div class="zone zone-cols">
+      <div class="zone-hdr">
+        <span>2. Columns</span>
+        <button class="zh-btn" onclick="moveSelected('cols')" title="Add">➕</button>
+        <button class="zh-btn" onclick="moveItemUp('cols')"   title="Move Up">⬆️</button>
+        <button class="zh-btn" onclick="moveItemDown('cols')" title="Move Down">⬇️</button>
+        <button class="zh-btn" onclick="clearZone('cols')"    title="Clear">🗑</button>
+      </div>
+      <ul id="zone-cols" class="zone-body" data-zone="cols"></ul>
+    </div>
+
+    <div class="zone zone-vals">
+      <div class="zone-hdr">
+        <span>3. Values (Sum)</span>
+        <button class="zh-btn" onclick="moveSelected('vals')" title="Add">➕</button>
+        <button class="zh-btn" onclick="moveItemUp('vals')"   title="Move Up">⬆️</button>
+        <button class="zh-btn" onclick="moveItemDown('vals')" title="Move Down">⬇️</button>
+        <button class="zh-btn" onclick="clearZone('vals')"    title="Clear">🗑</button>
+      </div>
+      <ul id="zone-vals" class="zone-body" data-zone="vals"></ul>
+    </div>
+
+    <div class="zone zone-filters">
+      <div class="zone-hdr">
+        <span>4. Filters</span>
+        <button class="zh-btn" onclick="moveSelected('filters')" title="Add">➕</button>
+        <button class="zh-btn" onclick="moveItemUp('filters')"   title="Move Up">⬆️</button>
+        <button class="zh-btn" onclick="moveItemDown('filters')" title="Move Down">⬇️</button>
+        <button class="zh-btn" onclick="clearZone('filters')"    title="Clear">🗑</button>
+      </div>
+      <ul id="zone-filters" class="zone-body" data-zone="filters"></ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ ACTION BAR ══ -->
+<div id="act-bar">
+  <button class="btn btn-yellow" id="btn-preview" onclick="showPreview()" disabled>⬇️ Show Preview</button>
+  <span id="lbl-rows"></span>
+  <button class="btn btn-blue"   id="btn-export"  onclick="exportExcel()" disabled>💾 Export Excel</button>
+</div>
+
+<!-- ══ GRID ══ -->
+<div id="grid-area">
+  <div id="grid-info"></div>
+  <div id="grid-wrap"><div id="no-data">Load a file or folder to begin</div></div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     MODALS
+     ════════════════════════════════════════════════════════════ -->
+
+<!-- File/Folder Browser -->
+<div id="browser-modal" class="overlay hidden" style="z-index: 9999;">
+  <div class="mbox" style="width:600px;height:70vh;min-height:400px">
+    <div class="mhdr" id="browser-title">📂 Browse</div>
+    <div class="bpath" id="browser-path">—</div>
+    <div class="blist" id="browser-list"></div>
+    <div class="mftr">
+      <span id="browser-sel-info" style="flex:1;font-size:11px;color:#555;align-self:center"></span>
+      <button id="browser-load-folder-btn" class="btn btn-green hidden" onclick="loadSelectedFolder()">Load This Folder ▶</button>
+      <button class="btn btn-gray" onclick="closeBrowser()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Checkbox Filter -->
+<div id="filter-modal" class="overlay hidden">
+  <div class="mbox" style="width:370px">
+    <div class="mhdr" id="fm-title">Filter</div>
+    <div class="mbody">
+      <input class="fsearch" id="fm-search" placeholder="🔍 Search values..." oninput="filterSearch()">
+      <div class="fbtns">
+        <button class="btn btn-green" style="font-size:11px" onclick="fmSelectAll()">✓ Select All</button>
+        <button class="btn btn-red"   style="font-size:11px" onclick="fmClearAll()">✗ Clear All</button>
+      </div>
+      <div class="fcb-list" id="fm-list"></div>
+    </div>
+    <div class="mftr">
+      <button class="btn btn-blue" onclick="applyFilter()">Apply</button>
+      <button class="btn btn-gray" onclick="closeFilter()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Value Filter -->
+<div id="vf-modal" class="overlay hidden">
+  <div class="mbox" style="width:310px">
+    <div class="mhdr" id="vf-title">Value Filter</div>
+    <div class="mbody">
+      <div class="vf-row">
+        <label>Condition:</label>
+        <select id="vf-op">
+          <option value="">— No Filter —</option>
+          <option value=">">Greater Than (&gt;)</option>
+          <option value="<">Less Than (&lt;)</option>
+          <option value="==">Equals (=)</option>
+          <option value="!=">Not Equals (≠)</option>
+        </select>
+      </div>
+      <div class="vf-row">
+        <label>Value:</label>
+        <input id="vf-val" type="number" value="0">
+      </div>
+    </div>
+    <div class="mftr">
+      <button class="btn btn-blue" onclick="applyValFilter()">Apply</button>
+      <button class="btn btn-gray" onclick="$('vf-modal').classList.add('hidden')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Excel2Parquet -->
+<div id="e2p-modal" class="overlay hidden">
+  <div class="mbox" style="width:560px">
+    <div class="mhdr">⚡ Excel2Parquet Converter</div>
+    <div class="mbody">
+
+      <div class="e2p-step">
+        <label>Step 1 — Select Excel File(s) or Folder</label>
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-blue"  style="font-size:11px" onclick="openBrowserFor('e2p-src','excel')">📄 Browse Files</button>
+          <button class="btn btn-teal"  style="font-size:11px" onclick="openBrowserFor('e2p-src-folder','folder-only')">🗂 Browse Folder</button>
+        </div>
+        <div id="e2p-file-list" style="margin-top:6px;font-size:11px;color:#27ae60;max-height:60px;overflow-y:auto"></div>
+      </div>
+
+      <div class="e2p-step" id="e2p-sheets-block" style="display:none">
+        <label>Step 2 — Select Sheets &nbsp;<span id="e2p-active-sheet-lbl" style="color:#27ae60;font-style:italic;font-size:10px"></span></label>
+        <div style="display:flex;gap:5px;margin-bottom:4px">
+          <button class="btn btn-green" style="font-size:10px" onclick="e2pSelAll('e2p-sheets-grid')">✓ All</button>
+          <button class="btn btn-red"   style="font-size:10px" onclick="e2pSelNone('e2p-sheets-grid')">✗ None</button>
+          <span style="font-size:10px;color:#94a3b8;align-self:center;margin-left:4px">← click sheet name to preview its columns</span>
+        </div>
+        <div class="cb-grid" id="e2p-sheets-grid"></div>
+      </div>
+
+      <div class="e2p-step" id="e2p-cols-block" style="display:none">
+        <label>Step 3 — Columns to include &nbsp;<span id="e2p-col-sheet-lbl" style="color:#27ae60;font-style:italic;font-size:10px"></span></label>
+        <div style="display:flex;gap:5px;margin-bottom:4px">
+          <button class="btn btn-green" style="font-size:10px" onclick="e2pSelAll('e2p-cols-grid')">✓ All</button>
+          <button class="btn btn-red"   style="font-size:10px" onclick="e2pSelNone('e2p-cols-grid')">✗ None</button>
+        </div>
+        <div id="e2p-cols-grid"></div>
+      </div>
+
+
+      <div id="e2p-result" style="font-size:11px;margin-top:5px;padding:5px 8px;border-radius:3px"></div>
+
+    </div>
+    <div class="mftr" style="flex-wrap:wrap;gap:5px">
+      <div style="display:flex;align-items:center;gap:5px;flex:1;min-width:160px">
+        <span style="font-size:11px;color:#555;white-space:nowrap">Download as:</span>
+        <input id="e2p-dl-name" placeholder="filename (auto)" style="flex:1;padding:3px 7px;border:1px solid #ddd;border-radius:3px;font-size:11px">
+      </div>
+      <button class="btn btn-blue"  id="e2p-dl-btn" onclick="downloadParquet()" disabled style="font-size:11px">⬇️ Download Parquet</button>
+      <button class="btn btn-gray"  onclick="$('e2p-modal').classList.add('hidden')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- VLookup Pro -->
+<div id="vl-modal" class="overlay hidden">
+  <div class="mbox" style="width:560px">
+    <div class="mhdr">🔗 VLookup Pro</div>
+    <div class="mbody">
+
+      <div class="vl-hdr">
+        <h3>🔗 Smart VLookup Pro</h3>
+        <p>Merge columns from a lookup file into the current dataset</p>
+      </div>
+
+      <div class="vl-step">
+        <div class="vl-step-title">📁 Step 1 — Import Lookup File</div>
+        <div style="display:flex;gap:7px;align-items:center">
+          <button class="btn btn-blue" style="font-size:11px" onclick="openBrowserFor('vl-file','all')">Import File</button>
+          <span id="vl-file-info" style="font-size:11px;color:#27ae60"></span>
+        </div>
+      </div>
+
+      <div class="vl-step">
+        <div class="vl-step-title">🔑 Step 2 — Select Matching Keys</div>
+        <div class="vl-row">
+          <label>Main data key:</label>
+          <select id="vl-main-key"></select>
+        </div>
+        <div class="vl-row">
+          <label>Lookup file key:</label>
+          <select id="vl-lookup-key"></select>
+        </div>
+      </div>
+
+      <div class="vl-step">
+        <div class="vl-step-title">☑ Step 3 — Columns to Add</div>
+        <div style="display:flex;gap:5px;margin-bottom:5px">
+          <button class="btn btn-green" style="font-size:10px" onclick="e2pSelAll('vl-cols-grid')">✓ All</button>
+          <button class="btn btn-red"   style="font-size:10px" onclick="e2pSelNone('vl-cols-grid')">✗ None</button>
+        </div>
+        <div class="vl-cols-grid" id="vl-cols-grid"></div>
+      </div>
+
+      <div id="vl-result" style="font-size:11px;margin-top:5px;padding:5px 8px;border-radius:3px"></div>
+    </div>
+    <div class="mftr">
+      <button class="btn btn-green" id="vl-run-btn" onclick="runVlookup()" disabled>▶ Run VLookup</button>
+      <button class="btn btn-gray"  onclick="$('vl-modal').classList.add('hidden')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Context Menu -->
+<div id="ctx" class="hidden">
+  <div class="ci" onclick="ctxDateFmt('%d-%m-%Y')">📅 Format: DD-MM-YYYY</div>
+  <div class="ci" onclick="ctxDateFmt('%b-%y')">📅 Format: MMM-YY</div>
+  <div class="ci" onclick="ctxDateFmt('FY')">📅 Format: FY YYYY-YY</div>
+  <div class="cs"></div>
+  <div class="ci" onclick="ctxReset()">↺ Reset Format</div>
+  <div class="cs"></div>
+  <div class="ci danger" onclick="ctxRemove()">✕ Remove</div>
+</div>
+
+<!-- NAYA: Append Parquet Modal -->
+<div id="append-modal" class="overlay hidden" style="z-index: 10001;">
+  <div class="mbox" style="width:450px">
+    <div class="mhdr">🔄 Append Parquet Files</div>
+    <div class="mbody">
+      <div class="e2p-step">
+        <label>Step 1 — Select Parquet Files to Append</label>
+        <button class="btn btn-blue" style="font-size:11px" onclick="browseAppendFiles()">📄 Browse Files</button>
+        <div id="append-file-list" style="margin-top:8px;font-size:11px;color:#27ae60;max-height:80px;overflow-y:auto;white-space:pre-wrap;">No files selected.</div>
+      </div>
+      <div class="e2p-step" style="margin-top:15px">
+        <label>Step 2 — Save As (Filename)</label>
+        <input id="append-dl-name" placeholder="e.g. Master_Appended" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:3px;font-size:12px">
+      </div>
+      <div id="append-result" style="font-size:11.5px;margin-top:10px;padding:6px 8px;border-radius:3px"></div>
+    </div>
+    <div class="mftr">
+      <button class="btn btn-purple" id="append-run-btn" onclick="runAppendParquet()" disabled>⬇️ Append & Download</button>
+      <button class="btn btn-gray" onclick="document.getElementById('append-modal').classList.add('hidden')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ════════════════════════════════════════════════════════════ -->
+<script>
+// ══ STATE ═════════════════════════════════════════════════════
+const S = {
+  columns:[], colTypes:{},
+  selected: new Set(),
+  zones:{ rows:[], cols:[], vals:[], filters:[] },
+  activeFilters:{}, valFilters:{}, dateFormats:{},
+  currentData:null,
+  sortCol:null, sortDir:1,
+  fm:{ col:null, allVals:[], checked:new Set() },
+  ctx:{ col:null, zone:null },
+  currentFolder: null,
+  // browser callback state
+  browser:{ mode:'file', callback:null, targetKey:null, folderPath:null },
+  // e2p state
+  e2p:{ files:[], outPath:'', outIsFolder:true, sheetInfo:{}, activeSheet:'' },
+  // vlookup state
+  vl:{ file:'', lookupCols:[] },
+};
+
+// --- Login Logic ---
+async function doLogin() {
+  const username = $('login-user').value;
+  const password = $('login-pass').value;
+  const err = $('login-err');
+  if(!username || !password) { err.textContent = "Enter credentials"; return; }
+  
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    const d = await r.json();
+    
+    if(r.ok) {
+      $('login-modal').classList.add('hidden');
+      
+      // Admin hai toh button banega
+      if(d.role === 'admin') {
+        const btnBar = $('btn-bar');
+        const adminBtn = document.createElement('button');
+        adminBtn.className = "btn btn-purple";
+        adminBtn.innerHTML = "👥 Users";
+        adminBtn.onclick = openAdmin;
+        
+        // Yeh button ko status-lbl ke theek aage (Right side) set kar dega
+        btnBar.appendChild(adminBtn);
+      }
+      
+      setStatus(`Logged in as: ${d.username}`);
+    } else {
+      err.textContent = d.detail || "Login failed";
+    }
+  } catch(e) { 
+    err.textContent = "Server connection error"; 
+  }
+}
+
+// --- Admin Panel Logic ---
+async function openAdmin() {
+  document.getElementById('admin-modal').classList.remove('hidden');
+  const r = await fetch('/api/admin/list-users');
+  const users = await r.json();
+  const area = document.getElementById('user-list-area');
+  area.innerHTML = '';
+  
+  users.forEach(u => {
+    const div = document.createElement('div');
+    // Styling ko thoda theek kiya hai taaki delete button sahi dikhe
+    div.style = "padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;";
+    const statusText = u.active ? 'Active' : 'Deactivated';
+    const btnText = u.active ? 'Deactivate' : 'Activate';
+    const btnClass = u.active ? 'btn-red' : 'btn-green';
+    
+    div.innerHTML = `
+      <div>
+        <strong>${u.username}</strong> <small style="color:#7f8c8d">(${u.role})</small><br>
+        <span style="font-size:10px; color:${u.active?'green':'red'}">${statusText}</span>
+      </div>
+      <div style="display:flex; gap:5px;">
+        <button class="btn ${btnClass}" style="font-size:10px; padding: 4px 8px;" onclick="toggleUser('${u.username}', ${!u.active})">
+          ${btnText}
+        </button>
+        <button class="btn btn-gray" style="font-size:10px; padding: 4px 8px;" onclick="deleteUser('${u.username}')" title="Delete User">🗑️</button>
+      </div>
+    `;
+    area.appendChild(div);
+  });
+}
+async function toggleUser(username, newState) {
+  if(username === 'admin' && newState === false) { alert("Cannot deactivate main admin!"); return; }
+  await fetch('/api/admin/toggle-user', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username, active: newState})
+  });
+  openAdmin(); 
+}
+
+// --- YAHAN NAYA FUNCTION AAYEGA ---
+async function createUser() {
+  const username = document.getElementById('new-user').value.trim();
+  const password = document.getElementById('new-pass').value.trim();
+  const role = document.getElementById('new-role').value;
+  
+  if(!username || !password) {
+    alert("Please enter both username and password!");
+    return;
+  }
+  
+  try {
+    const r = await fetch('/api/admin/create-user', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password, role})
+    });
+    
+    if(r.ok) {
+      document.getElementById('new-user').value = '';
+      document.getElementById('new-pass').value = '';
+      openAdmin(); 
+      setStatus(`✅ User '${username}' created successfully`);
+    } else {
+      const d = await r.json();
+      alert(d.detail || "Failed to create user");
+    }
+  } catch(e) {
+    alert("Server error while creating user");
+  }
+}
+async function deleteUser(username) {
+  if(username === 'admin') { 
+    alert("Cannot delete main admin!"); 
+    return; 
+  }
+  if(!confirm(`Are you sure you want to delete user '${username}'?`)) {
+    return;
+  }
+  
+  await fetch('/api/admin/delete-user', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username})
+  });
+  openAdmin(); 
+}
+async function viewLogs() {
+  const r = await fetch('/api/admin/logs');
+  if(!r.ok) {
+    alert("Only admins can view logs!");
+    return;
+  }
+  const logs = await r.json();
+  const area = document.getElementById('user-list-area');
+  
+  area.innerHTML = '<div style="padding:10px; font-weight:bold; background:#eee; position:sticky; top:0;">📋 Recent Logins</div>';
+  
+  if(logs.length === 0) {
+    area.innerHTML += '<div style="padding:10px;">No logs found.</div>';
+    return;
+  }
+  
+  logs.forEach(l => {
+    area.innerHTML += `
+      <div style="padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 11.5px; display:flex; justify-content:space-between;">
+        <span>👤 <b>${l.user}</b></span>
+        <span style="color:#636e72">🕒 ${l.time}</span>
+      </div>
+    `;
+  });
+}
+const $ = id => document.getElementById(id);
+const setStatus = t => $('status-lbl').textContent = t;
+
+function isNumStr(val) {
+  if (val === null || val === undefined || val === '') return false;
+  if (typeof val === 'number') return true;
+  let clean = String(val).replace(/,/g, '').trim();
+  return clean !== '' && !isNaN(clean);
+}
+
+function fmtNum(v) {
+  if (v === null || v === undefined || v === '') return ''; 
+  let clean = String(v).replace(/,/g, '').trim();
+  let n = parseFloat(clean);
+  if (isNaN(n)) return v; 
+  return n.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function setLoading(on){ document.body.classList.toggle('is-loading',on); }
+
+function colType(c){
+  const t=(S.colTypes[c]||'').toUpperCase();
+  if(['DOUBLE','FLOAT','INTEGER','BIGINT','DECIMAL','NUMERIC','HUGEINT','INT','SMALLINT','TINYINT','UBIGINT'].some(k=>t.startsWith(k))) return 'NUM';
+  if(['DATE','TIMESTAMP','TIME'].some(k=>t.startsWith(k))) return 'DATE';
+  return 'TEXT';
+}
+
+// ══ LOAD FILE/FOLDER ══════════════════════════════════════════
+function toggleLoadBar(){ $('load-bar').classList.toggle('hidden'); if(!$('load-bar').classList.contains('hidden')) $('path-input').focus(); }
+
+async function loadFromPath(){
+  const p=$('path-input').value.trim(); if(!p)return;
+  await doLoadFile([p]); $('load-bar').classList.add('hidden');
+}
+
+async function doLoadFile(pathsArray){
+  // Agar galti se sirf ek string aa jaye, toh usko array bana lo taaki error na aaye
+  if(typeof pathsArray === 'string') pathsArray = [pathsArray];
+  
+  setLoading(true); setStatus('Loading…');
+  try{
+    const r=await fetch('/api/load',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_paths:pathsArray})});
+    const d=await r.json();
+    if(!r.ok){alert('Error: '+(d.detail||d.message));return;}
+    applyLoadResult(d); S.currentFolder=null;
+    $('btn-scan').disabled=true;
+    setStatus(`✅ ${pathsArray.length} file(s) loaded — ${d.row_count.toLocaleString()} rows`);
+  }catch(e){alert('Load failed: '+e.message);setStatus('Error.');}
+  finally{setLoading(false);}
+}
+
+async function doLoadFolder(path){
+  setLoading(true); setStatus('Loading folder…');
+  try{
+    const r=await fetch('/api/load-folder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder_path:path})});
+    const d=await r.json();
+    if(!r.ok){alert('Error: '+(d.detail||d.message));return;}
+    applyLoadResult(d); S.currentFolder=path;
+    $('btn-scan').disabled=false;
+    const info=d.errors&&d.errors.length ? ` (${d.errors.length} errors)` : '';
+    setStatus(`✅ ${d.loaded_files.length} files, ${d.row_count.toLocaleString()} rows${info}`);
+    if(d.errors&&d.errors.length) console.warn('Load errors:',d.errors);
+  }catch(e){alert('Load failed: '+e.message);setStatus('Error.');}
+  finally{setLoading(false);}
+}
+
+function applyLoadResult(d){
+  S.columns=d.columns; S.colTypes=d.col_types;
+  S.selected.clear();
+  Object.keys(S.zones).forEach(z=>S.zones[z]=[]);
+  S.activeFilters={}; S.valFilters={}; S.dateFormats={};
+  renderAvailList(); Object.keys(S.zones).forEach(renderZone); clearGrid();
+  $('btn-raw').disabled=false; $('btn-reset').disabled=false;
+  $('btn-preview').disabled=false; $('btn-export').disabled=false;
+  $('btn-vlook').disabled=false;
+  $('col-count').textContent=`${d.columns.length} cols`;
+  closeBrowser();
+}
+
+// ══ SCAN NEW ══════════════════════════════════════════════════
+async function scanNew(){
+  if(!S.currentFolder){setStatus('No folder loaded');return;}
+  setLoading(true); setStatus('Scanning for new files…');
+  try{
+    const r=await fetch('/api/scan-new',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder_path:S.currentFolder})});
+    const d=await r.json();
+    if(d.status==='no_new'){setStatus('✅ No new files found');return;}
+    if(!r.ok){alert(d.detail||'Scan failed');return;}
+    S.columns=d.columns; S.colTypes=d.col_types;
+    renderAvailList();
+    setStatus(`✅ Added ${d.added} file(s) — ${d.row_count.toLocaleString()} rows total`);
+  }catch(e){alert('Scan error: '+e.message);}
+  finally{setLoading(false);}
+}
+
+// ══ RESET ═════════════════════════════════════════════════════
+function resetAll(){
+  S.selected.clear();
+  Object.keys(S.zones).forEach(z=>S.zones[z]=[]);
+  S.activeFilters={}; S.valFilters={}; S.dateFormats={};
+  Object.keys(S.zones).forEach(renderZone); clearGrid(); setStatus('Reset.');
+}
+
+// ══ AVAILABLE COLUMNS ═════════════════════════════════════════
+function renderAvailList(){
+  const ul=$('avail-list'); ul.innerHTML='';
+  S.columns.forEach(c=>{
+    const li=document.createElement('li'), t=colType(c);
+    li.dataset.col=c;
+    li.innerHTML=`<span class="type-badge type-${t}">${t}</span><span>${c}</span>`;
+    if(S.selected.has(c)) li.classList.add('sel');
+    li.addEventListener('click',e=>toggleAvailSel(c,li,e));
+    li.addEventListener('dblclick',()=>moveColToZone(c,'rows'));
+    ul.appendChild(li);
+  });
+}
+
+function toggleAvailSel(col,li,e){
+  if(e.ctrlKey||e.metaKey){
+    S.selected.has(col)?S.selected.delete(col):S.selected.add(col);
+    li.classList.toggle('sel');
+  } else if(e.shiftKey){
+    const items=[...$('avail-list').querySelectorAll('li')];
+    const last=items.findIndex(x=>x.classList.contains('sel'));
+    const cur=items.indexOf(li);
+    const [a,b]=[Math.min(last,cur),Math.max(last,cur)];
+    items.slice(a,b+1).forEach(x=>{S.selected.add(x.dataset.col);x.classList.add('sel');});
+  } else {
+    S.selected.clear();
+    $('avail-list').querySelectorAll('li.sel').forEach(x=>x.classList.remove('sel'));
+    S.selected.add(col); li.classList.add('sel');
+  }
+}
+
+// ══ ZONES ═════════════════════════════════════════════════════
+function moveItemUp(zone){
+  const ul=$('zone-'+zone);
+  const sel=ul.querySelector('li.sel');
+  if(!sel) return;
+  const idx=S.zones[zone].indexOf(sel.dataset.col);
+  if(idx<=0) return;
+  // swap in array
+  [S.zones[zone][idx-1], S.zones[zone][idx]] = [S.zones[zone][idx], S.zones[zone][idx-1]];
+  renderZone(zone);
+  // re-select
+  const items=ul.querySelectorAll('li');
+  if(items[idx-1]) items[idx-1].classList.add('sel');
+}
+
+function moveItemDown(zone){
+  const ul=$('zone-'+zone);
+  const sel=ul.querySelector('li.sel');
+  if(!sel) return;
+  const idx=S.zones[zone].indexOf(sel.dataset.col);
+  if(idx<0||idx>=S.zones[zone].length-1) return;
+  [S.zones[zone][idx], S.zones[zone][idx+1]] = [S.zones[zone][idx+1], S.zones[zone][idx]];
+  renderZone(zone);
+  const items=ul.querySelectorAll('li');
+  if(items[idx+1]) items[idx+1].classList.add('sel');
+}
+
+function moveSelected(zone){
+  if(!S.selected.size){setStatus('Select columns first (Ctrl+Click for multi)');return;}
+  let added=0;
+  S.selected.forEach(c=>{ if(!S.zones[zone].includes(c)){S.zones[zone].push(c);added++;} });
+  renderZone(zone);
+  if(added) setStatus(`Added ${added} to ${zone}`);
+}
+
+function moveColToZone(col,zone){
+  if(!S.zones[zone].includes(col)){S.zones[zone].push(col);renderZone(zone);}
+}
+
+function clearZone(zone){
+  S.zones[zone]=[]; renderZone(zone); setStatus(`Cleared ${zone}`);
+}
+
+function removeFromZone(col,zone){
+  S.zones[zone]=S.zones[zone].filter(c=>c!==col);
+  delete S.activeFilters[col]; delete S.valFilters[col];
+  renderZone(zone);
+}
+
+function renderZone(zone){
+  const ul=$('zone-'+zone); ul.innerHTML='';
+  S.zones[zone].forEach(c=>{
+    const li=document.createElement('li');
+    li.dataset.col=c; li.dataset.zone=zone;
+    let marks='';
+    if(S.activeFilters[c]) marks+=`<span class="fmark">[F]</span>`;
+    if(S.valFilters[c])    marks+=`<span class="lmark">[L]</span>`;
+    if(S.dateFormats[c])   marks+=`<span class="dmark">[D]</span>`;
+    li.innerHTML=`<span>${c}</span>${marks}<span class="rm" onclick="removeFromZone('${c}','${zone}')">✕</span>`;
+    li.addEventListener('click', ()=>{
+      $('zone-'+zone).querySelectorAll('li').forEach(x=>x.classList.remove('sel'));
+      li.classList.add('sel');
+    });
+    li.addEventListener('dblclick',()=>{ if(zone==='vals')openValFilter(c); else openFilter(c); });
+    li.addEventListener('contextmenu',e=>{ e.preventDefault(); S.ctx.col=c; S.ctx.zone=zone; showCtx(e.clientX,e.clientY); });
+    ul.appendChild(li);
+  });
+}
+
+// ── Make Available Columns draggable ──
+Sortable.create($('avail-list'), {
+  group: { name: 'zones', pull: 'clone', put: false },
+  sort: false,
+  animation: 130,
+  ghostClass: 'ghost',
+  onStart(evt) {
+    // Save column name so we know what is being dragged
+    evt.item.dataset.col = evt.item.dataset.col || evt.item.querySelector('span:last-child').textContent;
+  },
+  onClone(evt) {
+    // Keep original item visible in the list
+    evt.item.style.display = '';
+  }
+});
+
+// ── Make the 4 Zones drop targets ──
+['rows','cols','vals','filters'].forEach(zone=>{
+  Sortable.create($('zone-'+zone),{
+    group: 'zones', animation: 130, ghostClass: 'ghost',
+    onAdd(evt){
+      // CHECK: Agar item sirf 'Available Columns' (avail-list) se laya gaya hai, tabhi push karo
+      if(evt.from.id === 'avail-list') {
+        const col = evt.item.dataset.col || evt.item.querySelector('span:last-child')?.textContent;
+        
+        // Agar Ctrl+Click wali multiple selection hai
+        if (col && S.selected.has(col)) {
+          S.selected.forEach(c => {
+            if (!S.zones[zone].includes(c)) S.zones[zone].push(c);
+          });
+        } 
+        // Single drag hai
+        else if (col && !S.zones[zone].includes(col)) {
+          S.zones[zone].push(col);
+        }
+        
+        // Clone ko remove karke properly render karo
+        evt.item.remove();
+        ['rows','cols','vals','filters'].forEach(renderZone);
+      }
+    },
+    onEnd(){
+      // Jab Drag poora ho jaye (chaahe same box me uper-niche kiya ho, ya doosre box me daala ho)
+      // Toh jo bhi naya order hai, usko seedha array mein save kar lo
+      ['rows','cols','vals','filters'].forEach(z=>{
+        S.zones[z] = [...$('zone-'+z).querySelectorAll('li')].map(l=>l.dataset.col);
+      });
+      ['rows','cols','vals','filters'].forEach(renderZone);
+    }
+  });
+});
+
+// ══ CONTEXT MENU ══════════════════════════════════════════════
+function showCtx(x,y){ const m=$('ctx'); m.classList.remove('hidden'); m.style.left=x+'px'; m.style.top=y+'px'; }
+function hideCtx(){ $('ctx').classList.add('hidden'); }
+document.addEventListener('click',hideCtx);
+function ctxDateFmt(fmt){ if(!S.ctx.col)return; S.dateFormats[S.ctx.col]=fmt; ['rows','cols','vals','filters'].forEach(renderZone); hideCtx(); }
+function ctxReset(){ if(!S.ctx.col)return; delete S.dateFormats[S.ctx.col]; ['rows','cols','vals','filters'].forEach(renderZone); hideCtx(); }
+function ctxRemove(){ if(!S.ctx.col||!S.ctx.zone)return; removeFromZone(S.ctx.col,S.ctx.zone); hideCtx(); }
+
+// ══ FILTER DIALOG ═════════════════════════════════════════════
+async function openFilter(col){
+  $('fm-title').textContent=`Filter: ${col}`; $('fm-search').value='';
+  $('fm-list').innerHTML='<div style="padding:8px;color:#94a3b8">Loading…</div>';
+  $('filter-modal').classList.remove('hidden'); S.fm.col=col;
+  const r=await fetch('/api/filter-values',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({column:col})});
+  const d=await r.json(); S.fm.allVals=d.values;
+  const cur=S.activeFilters[col]?new Set(S.activeFilters[col].map(String)):new Set(d.values.map(String));
+  S.fm.checked=cur; renderFmList(d.values);
+}
+
+function renderFmList(vals){
+  const div=$('fm-list'); div.innerHTML='';
+  vals.forEach(v=>{
+    const row=document.createElement('div'); row.className='fcb-item';
+    const id='fcb_'+Math.random().toString(36).slice(2);
+    const chk=S.fm.checked.has(String(v));
+    row.innerHTML=`<input type="checkbox" id="${id}" ${chk?'checked':''}><label for="${id}">${v===''?'(empty)':v}</label>`;
+    row.querySelector('input').addEventListener('change',e=>{ e.target.checked?S.fm.checked.add(String(v)):S.fm.checked.delete(String(v)); });
+    div.appendChild(row);
+  });
+}
+let searchTimer;
+function filterSearch() {
+  clearTimeout(searchTimer);
+  // Type karte waqt 400ms wait karega taaki PC hang na ho
+  searchTimer = setTimeout(async () => {
+    const q = $('fm-search').value.trim();
+    $('fm-list').innerHTML = '<div style="padding:10px; color:#94a3b8; font-style:italic;">Searching database...</div>';
+    
+    try {
+      const r = await fetch('/api/filter-values', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({column: S.fm.col, search: q})
+      });
+      const d = await r.json();
+      S.fm.allVals = d.values;
+      renderFmList(d.values);
+    } catch(e) {
+      $('fm-list').innerHTML = '<div style="padding:10px; color:#e74c3c;">Search failed.</div>';
+    }
+  }, 400);
+}
+
+function fmSelectAll(){ S.fm.checked=new Set(S.fm.allVals.map(String)); renderFmList(S.fm.allVals); }
+function fmClearAll(){ S.fm.checked.clear(); renderFmList(S.fm.allVals); }
+
+function applyFilter(){
+  const col = S.fm.col;
+  const q = $('fm-search').value.trim();
+  
+  // Agar search box khali hai aur sab checked hai, tabhi filter delete karo
+  if(S.fm.checked.size === 0 || (q === '' && S.fm.checked.size === S.fm.allVals.length)) {
+    delete S.activeFilters[col];
+  } else {
+    S.activeFilters[col] = [...S.fm.checked];
+  }
+  
+  ['rows', 'cols', 'vals', 'filters'].forEach(renderZone); 
+  closeFilter();
+}
+
+function closeFilter(){ $('filter-modal').classList.add('hidden'); }
+
+// ══ VALUE FILTER ══════════════════════════════════════════════
+function openValFilter(col){
+  $('vf-title').textContent=`Value Filter: ${col}`; S.fm.col=col;
+  const cur=S.valFilters[col];
+  $('vf-op').value=cur?cur.op:''; $('vf-val').value=cur?cur.val:'0';
+  $('vf-modal').classList.remove('hidden');
+}
+function applyValFilter(){
+  const col=S.fm.col, op=$('vf-op').value, val=$('vf-val').value;
+  if(!op) delete S.valFilters[col]; else S.valFilters[col]={op,val};
+  ['rows','cols','vals','filters'].forEach(renderZone);
+  $('vf-modal').classList.add('hidden');
+}
+
+// ══ UNIFIED FILE BROWSER ══════════════════════════════════════
+// ══ NATIVE FILE UPLOADER (FOR REMOTE SERVER DEPLOYMENT) ══════════════
+function openBrowser(mode='file'){
+  if(mode === 'folder') { alert("Folder mode is not supported on live server. Please use 'File' to upload."); return; }
+  
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.parquet, .pq, .xlsx, .xls, .xlsb, .csv';
+  input.multiple = true; // Yahan multiple ON kiya
+  
+  input.onchange = async (e) => {
+    const files = e.target.files;
+    if(files.length > 0) await uploadAndProcess(files, null);
+  };
+  input.click(); 
+}
+
+function openBrowserFor(targetId, mode){
+  if(mode === 'folder-only' || mode === 'folder') {
+    if(targetId === 'e2p-out') {
+       $('e2p-out-path').value = "./_Uploads"; 
+       $('e2p-run-btn').disabled = false;
+       alert("Output will be saved directly on the Server's _Uploads folder.");
+       return;
+    }
+    alert("Folder selection is not supported in remote mode. Select single file."); 
+    return;
+  }
+  
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.parquet, .pq, .xlsx, .xls, .xlsb, .csv';
+  input.multiple = true; // Yahan multiple ON kiya
+  
+  input.onchange = async (e) => {
+    const files = e.target.files;
+    if(files.length > 0) await uploadAndProcess(files, targetId);
+  };
+  input.click();
+}
+
+async function uploadAndProcess(filesList, targetId) {
+  setLoading(true); setStatus(`Uploading ${filesList.length} file(s)...`);
+  try {
+    const fd = new FormData();
+    for (let i = 0; i < filesList.length; i++) {
+      fd.append('files', filesList[i]); 
+    }
+    
+    const r = await fetch('/api/upload', {method: 'POST', body: fd});
+    const d = await r.json();
+    
+    if(!r.ok) {
+       let errorMsg = d.detail || 'Upload failed';
+       if (typeof errorMsg === 'object') errorMsg = JSON.stringify(errorMsg);
+       throw new Error(errorMsg);
+    }
+    
+    let uploadedFiles = [];
+    if (d.filenames) { uploadedFiles = d.filenames; } 
+    else if (d.path) { uploadedFiles = [d.path.split('/').pop()]; } 
+    else { throw new Error("Server ne file path return nahi kiya."); }
+    
+    // Saari files ko list mein convert kar liya
+    const serverPaths = uploadedFiles.map(f => "./_Uploads/" + f);
+    const firstServerPath = serverPaths[0]; 
+    
+    if(!targetId) {
+      // YAHAN SE WOH PURANA ALERT HATA DIYA GAYA HAI
+      // Ab seedha saari files ka array DuckDB ko bhej diya jayega!
+      doLoadFile(serverPaths); 
+    } else if(targetId === 'e2p-src') {
+      S.e2p.files = serverPaths; 
+      renderE2PFileList(); 
+      loadE2PSheetsAndCols(firstServerPath);
+    } else if(targetId === 'vl-file') {
+      loadVlookupFile(firstServerPath);
+    }
+  } catch(e) {
+    alert("Upload Error: " + e.message); 
+    setStatus('Upload Error.');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ══ PIVOT PREVIEW ═════════════════════════════════════════════
+async function showPreview(){
+  if(!S.columns.length) return;
+  setLoading(true); setStatus('Building pivot…');
+  try{
+    const r=await fetch('/api/pivot',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({rows:S.zones.rows,cols:S.zones.cols,vals:S.zones.vals,
+        filters:S.activeFilters,val_filters:S.valFilters,date_formats:S.dateFormats})});
+    const d=await r.json();
+    if(!r.ok){alert(d.detail||'Pivot error');return;}
+    S.currentData=d; S.sortCol=null; renderTable(d);
+    setStatus(`✅ ${d.total_rows.toLocaleString()} rows`);
+  }catch(e){alert('Error: '+e.message);}
+  finally{setLoading(false);}
+}
+// ⬇️ YAHAN SE AAPKA PASTED CODE SHURU HOGA ⬇️
+// Keep a dummy close function so other HTML buttons don't break
+function closeBrowser() { 
+  const modal = document.getElementById('browser-modal');
+  if(modal) modal.classList.add('hidden'); 
+}
+
+function loadSelectedFolder(){
+  if(typeof BrowserFolderPath === 'undefined' || !BrowserFolderPath) return;
+  if(typeof BrowserMode === 'undefined') return;
+  
+  if(BrowserMode==='folder'){
+    doLoadFolder(BrowserFolderPath);
+  } else if(BrowserMode==='folder-only'&&BrowserTargetId==='e2p-out'){
+    document.getElementById('e2p-out-path').value=BrowserFolderPath; 
+    S.e2p.outPath=BrowserFolderPath;
+    document.getElementById('e2p-run-btn').disabled=!(S.e2p.files.length&&S.e2p.outPath);
+    closeBrowser();
+  } else if(BrowserMode==='folder-only'&&BrowserTargetId==='e2p-src-folder'){
+    S.e2p.files=['__folder__:'+BrowserFolderPath]; 
+    renderE2PFileList(); 
+    closeBrowser();
+  } else {
+    closeBrowser();
+  }
+}
+
+// ══ RAW DATA ══════════════════════════════════════════════════
+async function loadRaw(){
+  setLoading(true); setStatus('Loading raw data…');
+  try{
+    const r=await fetch('/api/raw');
+    const d=await r.json();
+    if(!r.ok){alert(d.detail);return;}
+    S.currentData=d; S.sortCol=null; renderTable(d);
+    setStatus(`Raw: top 100 of ${d.total_rows.toLocaleString()} rows`);
+  }finally{setLoading(false);}
+}
+
+// ══ TABLE RENDER ══════════════════════════════════════════════
+// Numeric cols determined by colTypes from server — NOT by value guessing
+// This prevents INV_NO, GSTIN etc from being formatted as numbers
+const NUM_TYPES = ['DOUBLE','FLOAT','INTEGER','BIGINT','DECIMAL','NUMERIC',
+                   'HUGEINT','INT','SMALLINT','TINYINT','UBIGINT','REAL','FLOAT4','FLOAT8'];
+function isNumericColType(colName){
+  const upCol = String(colName).toUpperCase();
+  // Agar column ke naam me DATE, NO, ya ID hai, toh uspar commas aur .00 mat lagao
+  if(upCol.includes('DATE') || upCol.includes(' NO') || upCol.includes('_NO') || upCol.includes('ID')) return false; 
+  
+  const t = (S.colTypes[colName] || '').toUpperCase();
+  return NUM_TYPES.some(k => t.startsWith(k));
+}
+
+function renderTable(d){
+  const wrap=$('grid-wrap');
+  if(!d||!d.data||d.data.length===0){
+    wrap.innerHTML='<div id="no-data">No data — adjust filters or selections</div>';
+    $('grid-info').textContent=''; return;
+  }
+  const cols=d.columns;
+
+  // ★ Use server colTypes — only format columns that are truly numeric
+  const numColIdx=new Set();
+  cols.forEach((c,i)=>{ if(isNumericColType(c)) numColIdx.add(i); });
+  // For pivot result cols (e.g. "TAX_AMT | AAH"), also check if any val zone col matches
+  const valSet=new Set(S.zones.vals);
+  cols.forEach((c,i)=>{ if(valSet.has(c)) numColIdx.add(i); });
+
+  const tbl=document.createElement('table'); tbl.className='dtbl';
+  const thead=document.createElement('thead'), htr=document.createElement('tr');
+  cols.forEach((c,i)=>{
+    const th=document.createElement('th'); th.textContent=c; th.dataset.col=i;
+    if(S.sortCol===i) th.classList.add(S.sortDir===1?'asc':'desc');
+    
+    // NAYA CODE: Agar column number hai, toh uske header ko right-align karo
+    if(numColIdx.has(i)) {
+      th.style.textAlign = 'right';
+    }
+    
+    th.addEventListener('click',()=>sortTable(i));
+    htr.appendChild(th);
+  });
+  thead.appendChild(htr); tbl.appendChild(thead);
+
+  let rows=[...d.data];
+  if(S.sortCol!==null){
+    const idx=S.sortCol;
+    rows.sort((a,b)=>{
+      const av=a[idx],bv=b[idx],an=parseFloat(av),bn=parseFloat(bv);
+      return(!isNaN(an)&&!isNaN(bn))?(an-bn)*S.sortDir:String(av).localeCompare(String(bv))*S.sortDir;
+    });
+  }
+
+  const tbody=document.createElement('tbody');
+  rows.forEach(row=>{
+    const tr=document.createElement('tr');
+    const isGT=row.some(v=>String(v)==='Grand Total'||String(v)==='Grand Total');
+    if(isGT) tr.classList.add('grand-total');
+    row.forEach((v,i)=>{
+            const td=document.createElement('td');
+            // !isGT hata diya taaki Grand Total bhi as a Number format ho
+            if(numColIdx.has(i) && isNumStr(String(v))){
+              td.className='num'; td.textContent=fmtNum(v);
+            } else {
+        let val = String(v);
+        // Agar value ke aakhri me '.0' hai (jaise 20250401.0), toh us extra '.0' ko hata do
+        if(val.endsWith('.0')) {
+            val = val.replace(/\.0$/, '');
+        }
+        td.textContent = val;
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody); wrap.innerHTML=''; wrap.appendChild(tbl);
+  $('grid-info').textContent=`Showing ${rows.length.toLocaleString()} of ${d.total_rows.toLocaleString()} rows  |  ${cols.length} columns`;
+}
+function sortTable(colIdx){ S.sortCol===colIdx?S.sortDir*=-1:(S.sortCol=colIdx,S.sortDir=1); renderTable(S.currentData); }
+function clearGrid(){ $('grid-wrap').innerHTML='<div id="no-data">Load a file or folder to begin</div>'; $('grid-info').textContent=''; S.currentData=null; }
+
+// ══ SEARCH ════════════════════════════════════════════════════
+function doSearch(){
+  if(!S.currentData) return;
+  const q=$('search-box').value.toLowerCase();
+  if(!q){renderTable(S.currentData);return;}
+  const filtered={columns:S.currentData.columns,total_rows:S.currentData.total_rows,
+    data:S.currentData.data.filter(row=>row.some(v=>String(v).toLowerCase().includes(q)))};
+  renderTable(filtered); setStatus(`Search: ${filtered.data.length} rows matched`);
+}
+
+// ══ EXPORT ════════════════════════════════════════════════════
+async function exportExcel(){
+  setLoading(true); setStatus('Exporting…');
+  try{
+    const resp=await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({rows:S.zones.rows,cols:S.zones.cols,vals:S.zones.vals,
+        filters:S.activeFilters,val_filters:S.valFilters,date_formats:S.dateFormats})});
+    if(!resp.ok){const e=await resp.json();alert(e.detail||'Export failed');return;}
+    const blob=await resp.blob(), url=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url; a.download='sales_pivot.xlsx'; a.click(); URL.revokeObjectURL(url);
+    setStatus('✅ Exported!');
+  }catch(e){alert('Export error: '+e.message);}
+  finally{setLoading(false);}
+}
+
+// ══ EXCEL2PARQUET ═════════════════════════════════════════════
+function openE2P(){
+  S.e2p={files:[],outPath:'',outIsFolder:true,sheetInfo:{},activeSheet:''};
+  $('e2p-file-list').textContent='';
+  $('e2p-sheets-block').style.display='none'; $('e2p-cols-block').style.display='none';
+  $('e2p-result').textContent='';
+  $('e2p-dl-btn').disabled=true;
+  $('e2p-active-sheet-lbl').textContent=''; $('e2p-col-sheet-lbl').textContent='';
+  if($('e2p-dl-name')) $('e2p-dl-name').value='';
+  $('e2p-modal').classList.remove('hidden');
+}
+
+function renderE2PFileList(){
+  if(!S.e2p.files.length){$('e2p-file-list').textContent='';return;}
+  $('e2p-file-list').textContent=S.e2p.files.map(f=>f.startsWith('__folder__:')?'📁 Folder: '+f.slice(11):'📄 '+f.split('/').pop()).join('\n');
+}
+
+async function loadE2PSheetsAndCols(path){
+  try{
+    const r=await fetch('/api/get-sheets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:path})});
+    const d=await r.json();
+    
+    if(!r.ok){
+        let errMsg = d.detail || "Error loading sheets";
+        if(typeof errMsg === 'object') errMsg = JSON.stringify(errMsg);
+        alert("Sheet Error: " + errMsg);
+        return;
+    }
+
+    S.e2p.sheetInfo = d.sheet_info || {};
+
+    const sg=$('e2p-sheets-grid'); sg.innerHTML='';
+    d.sheets.forEach(s=>{
+      const info  = S.e2p.sheetInfo[s] || {};
+      const nCols = (info.columns||[]).length;
+      const nRows = (info.row_count||0).toLocaleString();
+      const safeId='sh_'+s.replace(/\W/g,'_');
+      const c=document.createElement('div'); c.className='cb-item';
+      // Dataset mein sheet name store kar rahe hain taaki baad mein extract kar sakein
+      c.innerHTML=`<input type="checkbox" checked id="${safeId}" data-sheet="${s}">
+        <label for="${safeId}" style="cursor:pointer;flex:1;user-select:none">${s}</label>
+        <span style="font-size:9px;color:#94a3b8;white-space:nowrap;flex-shrink:0">${nCols} cols · ${nRows} rows</span>`;
+      
+      // Tkinter jaisa click event: checkbox ya label dabane pe list refresh hogi
+      c.querySelector('input').addEventListener('change', refreshCombinedColumns);
+      c.querySelector('label').addEventListener('click', e=>{ 
+          e.preventDefault(); 
+          const chk = c.querySelector('input');
+          chk.checked = !chk.checked; 
+          refreshCombinedColumns(); 
+      });
+      sg.appendChild(c);
+    });
+    $('e2p-sheets-block').style.display='block';
+
+    // Initial load pe selected sheets ke columns combine karna
+    refreshCombinedColumns();
+
+    // Enable download button
+    $('e2p-dl-btn').disabled=false;
+    // Auto-fill download filename from uploaded file
+    if($('e2p-dl-name')&&!$('e2p-dl-name').value){
+      $('e2p-dl-name').value=path.split('/').pop().replace(/\.[^.]+$/,'')||'converted';
+    }
+
+  }catch(e){console.error(e);}
+}
+
+function refreshCombinedColumns() {
+  const ordered_cols = [];
+  const col_dtypes = {};
+  
+  // 1. Get all checked sheets
+  const checkedInputs = document.querySelectorAll('#e2p-sheets-grid input:checked');
+  const checkedSheets = Array.from(checkedInputs).map(inp => inp.dataset.sheet);
+  
+  // 2. Combine columns keeping original order (Aapke Tkinter code jaisa logic)
+  checkedSheets.forEach(sheet => {
+    const info = S.e2p.sheetInfo[sheet] || { columns: [], types: {} };
+    const cols = info.columns || [];
+    
+    cols.forEach(c => {
+      // "if col not in ordered_cols: ordered_cols.append(col)" ka JS equivalent
+      if (!ordered_cols.includes(c)) {
+         ordered_cols.push(c);
+      }
+      // Dtypes collect karna (jaise aapne python mein set() se kiya tha)
+      if (!col_dtypes[c]) col_dtypes[c] = new Set();
+      if (info.types && info.types[c]) col_dtypes[c].add(info.types[c]);
+    });
+  });
+
+  $('e2p-active-sheet-lbl').textContent = checkedSheets.length > 0 ? `(Selected: ${checkedSheets.length} sheets)` : '(No sheets selected)';
+  $('e2p-col-sheet-lbl').textContent = `— Combined (${ordered_cols.length} unique cols)`;
+
+  // 3. Render the columns
+  const cg = $('e2p-cols-grid'); 
+  cg.innerHTML = '';
+  
+  ordered_cols.forEach(c => {
+    const div = document.createElement('div'); div.className = 'e2p-col-item';
+    const id = 'ec_' + c.replace(/\W/g,'_') + '_' + Math.random().toString(36).slice(2,5);
+    
+    // Multiple sheets mein same column ke alag data-types ho sakte hain, unhe join karna
+    const dtypeStr = Array.from(col_dtypes[c]).sort().join(', ');
+    
+    div.innerHTML = `<input type="checkbox" checked id="${id}">
+      <label for="${id}" style="flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c}">${c}</label>
+      <span class="col-type-badge">${dtypeStr}</span>`;
+    cg.appendChild(div);
+  });
+  
+  $('e2p-cols-block').style.display = ordered_cols.length > 0 ? 'block' : 'none';
+}
+
+function e2pSelAll(gridId){ 
+  document.querySelectorAll(`#${gridId} input[type=checkbox]`).forEach(x=>x.checked=true); 
+  if(gridId === 'e2p-sheets-grid') refreshCombinedColumns();
+}
+function e2pSelNone(gridId){ 
+  document.querySelectorAll(`#${gridId} input[type=checkbox]`).forEach(x=>x.checked=false); 
+  if(gridId === 'e2p-sheets-grid') refreshCombinedColumns();
+}
+
+async function runConvert(){
+  const files=S.e2p.files; if(!files.length){alert('Select files first');return;}
+  const outPath=$('e2p-out-path').value.trim(); if(!outPath){alert('Select output path');return;}
+  const merge=$('e2p-merge').checked;
+  const sheets=[...document.querySelectorAll('#e2p-sheets-grid input:checked')].map(x=>{
+    const lbl=x.nextElementSibling; return lbl?lbl.textContent.trim():x.id.replace('sh_','').replace(/_/g,' ');
+  });
+  const cols=[...document.querySelectorAll('#e2p-cols-grid input:checked')].map(x=>{
+    const lbl=x.nextElementSibling; return lbl?lbl.textContent.trim():x.id.replace('ec_','').replace(/_/g,' ');
+  });
+  const actualFiles=files[0].startsWith('__folder__:')?[files[0].slice(11)]:files;
+  setLoading(true); $('e2p-result').textContent='Converting…'; $('e2p-result').style.background='';
+  try{
+    const r=await fetch('/api/convert',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({files:actualFiles,sheets,columns:cols,output_path:outPath,merge_all:merge})});
+    const d=await r.json();
+    let msg=`✅ Converted: ${d.success.join(', ')||'Done'}`;
+    if(d.errors&&d.errors.length) msg+=`\n⚠️ Errors: ${d.errors.join('; ')}`;
+    $('e2p-result').textContent=msg;
+    $('e2p-result').style.background=d.errors&&d.errors.length?'#fff3cd':'#d4edda';
+  }catch(e){$('e2p-result').textContent='Error: '+e.message;$('e2p-result').style.background='#f8d7da';}
+  finally{setLoading(false);}
+}
+
+function setServerOutPath(){
+  $('e2p-out-path').value='./_Uploads';
+  $('e2p-run-btn').disabled=!S.e2p.files.length;
+}
+
+async function downloadParquet(){
+  const files=S.e2p.files; if(!files.length){alert('Select a file first');return;}
+  const actualFile=files[0].startsWith('__folder__:')?null:files[0];
+  if(!actualFile){alert('Download works with single file only (not folder mode)');return;}
+  const sheets=[...document.querySelectorAll('#e2p-sheets-grid input:checked')].map(x=>{
+    const lbl=x.nextElementSibling; return lbl?lbl.textContent.trim():'';
+  }).filter(Boolean);
+  const cols=[...document.querySelectorAll('#e2p-cols-grid input:checked')].map(x=>{
+    const lbl=x.nextElementSibling; return lbl?lbl.textContent.trim():'';
+  }).filter(Boolean);
+  const inputName=$('e2p-dl-name')?$('e2p-dl-name').value.trim():'';
+  const fname=inputName||actualFile.split('/').pop().replace(/\.[^.]+$/,'')||'converted';
+
+  setLoading(true); $('e2p-result').textContent='Converting & downloading…'; $('e2p-result').style.background='';
+  try{
+    const r=await fetch('/api/convert-download',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({file:actualFile,sheets,columns:cols,filename:fname})});
+    if(!r.ok){const e=await r.json();alert(e.detail||'Convert failed');
+      $('e2p-result').textContent='Error: '+(e.detail||'Failed');$('e2p-result').style.background='#f8d7da';return;}
+    const blob=await r.blob(), url=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url; a.download=fname.endsWith('.parquet')?fname:fname+'.parquet';
+    a.click(); URL.revokeObjectURL(url);
+    $('e2p-result').textContent=`✅ "${a.download}" download started! Save anywhere on your system.`;
+    $('e2p-result').style.background='#d4edda';
+    setStatus('✅ Download complete!');
+  }catch(e){$('e2p-result').textContent='Error: '+e.message;$('e2p-result').style.background='#f8d7da';}
+  finally{setLoading(false);}
+}
+
+// ══ VLOOKUP PRO ═══════════════════════════════════════════════
+function openVlookup(){
+  if(!S.columns.length){alert('Load main data first');return;}
+  S.vl={file:'',lookupCols:[]};
+  $('vl-file-info').textContent=''; $('vl-cols-grid').innerHTML='';
+  $('vl-result').textContent=''; $('vl-run-btn').disabled=true;
+  // Populate main key dropdown
+  const mk=$('vl-main-key'); mk.innerHTML='';
+  S.columns.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; mk.appendChild(o); });
+  $('vl-modal').classList.remove('hidden');
+}
+
+async function loadVlookupFile(path){
+  setLoading(true);
+  try{
+    const r=await fetch('/api/vlookup-cols',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:path})});
+    const d=await r.json();
+    if(!r.ok){alert(d.detail);return;}
+    S.vl.file=path; S.vl.lookupCols=d.columns;
+    $('vl-file-info').textContent=`${path.split('/').pop()} — ${d.row_count.toLocaleString()} rows`;
+    // Lookup key dropdown
+    const lk=$('vl-lookup-key'); lk.innerHTML='';
+    d.columns.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; lk.appendChild(o); });
+    // Cols grid
+    const cg=$('vl-cols-grid'); cg.innerHTML='';
+    d.columns.forEach(c=>{ const div=document.createElement('div'); div.className='cb-item';
+      const id='vlc_'+c.replace(/\W/g,'_');
+      div.innerHTML=`<input type="checkbox" checked id="${id}"><label for="${id}">${c}</label>`; cg.appendChild(div); });
+    $('vl-run-btn').disabled=false;
+  }catch(e){alert('Error: '+e.message);}
+  finally{setLoading(false); closeBrowser();}
+}
+
+async function runVlookup(){
+  const mainKey=$('vl-main-key').value;
+  const lookupKey=$('vl-lookup-key').value;
+  const addCols=[...document.querySelectorAll('#vl-cols-grid input:checked')].map(x=>{
+    const lbl=x.nextElementSibling; return lbl?lbl.textContent:x.id.replace('vlc_','');
+  });
+  if(!addCols.length){alert('Select at least one column to add');return;}
+  setLoading(true); $('vl-result').textContent='Running VLookup…'; $('vl-result').style.background='';
+  try{
+    const r=await fetch('/api/vlookup',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({lookup_file:S.vl.file,main_key:mainKey,lookup_key:lookupKey,add_columns:addCols})});
+    const d=await r.json();
+    if(!r.ok){$('vl-result').textContent='Error: '+(d.detail||'Failed');$('vl-result').style.background='#f8d7da';return;}
+    S.columns=d.columns; S.colTypes=d.col_types;
+    renderAvailList();
+    $('col-count').textContent=`${d.columns.length} cols`;
+    $('vl-result').textContent=`✅ Done! Added: ${d.added_columns.join(', ')} — Total rows: ${d.row_count.toLocaleString()}`;
+    $('vl-result').style.background='#d4edda';
+    setStatus(`VLookup done — ${d.row_count.toLocaleString()} rows`);
+  }catch(e){$('vl-result').textContent='Error: '+e.message;$('vl-result').style.background='#f8d7da';}
+  finally{setLoading(false);}
+}
+
+// ══ KEYBOARD SHORTCUTS ════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    closeFilter(); closeBrowser();
+    // NAYA: 'append-modal' add kiya gaya hai
+    ['vf-modal','e2p-modal','vl-modal','append-modal'].forEach(id=>$(id).classList.add('hidden'));
+    hideCtx();
+  }
+  if(e.key==='Enter'&&!$('filter-modal').classList.contains('hidden')) applyFilter();
+});
+
+// =================================================================
+//  APPEND PARQUET SCRIPT (NEW & ISOLATED)
+// =================================================================
+let appendSelectedFiles = [];
+
+function openAppendModal() {
+  appendSelectedFiles = [];
+  document.getElementById('append-file-list').textContent = 'No files selected.';
+  document.getElementById('append-dl-name').value = '';
+  document.getElementById('append-result').textContent = '';
+  document.getElementById('append-result').style.background = 'transparent';
+  document.getElementById('append-run-btn').disabled = true;
+  document.getElementById('append-modal').classList.remove('hidden');
+}
+
+function browseAppendFiles() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.parquet, .pq';
+  input.multiple = true;
+  input.onchange = async (e) => {
+    const files = e.target.files;
+    if(files.length < 2) {
+      alert("Please select at least 2 Parquet files to append.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const fd = new FormData();
+      for (let i = 0; i < files.length; i++) fd.append('files', files[i]); 
+      
+      const r = await fetch('/api/upload', {method: 'POST', body: fd});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.detail || 'Upload failed');
+      
+      appendSelectedFiles = (d.filenames || [d.path.split('/').pop()]).map(f => "./_Uploads/" + f);
+      document.getElementById('append-file-list').textContent = appendSelectedFiles.map(f => '📄 ' + f.split('/').pop()).join('\n');
+      document.getElementById('append-run-btn').disabled = false;
+    } catch(err) {
+      alert("Upload Error: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  input.click();
+}
+
+async function runAppendParquet() {
+  if(appendSelectedFiles.length < 2) return alert("Select at least 2 files.");
+  
+  const inputName = document.getElementById('append-dl-name').value.trim();
+  const fname = inputName || 'Master_Appended';
+  const resultBox = document.getElementById('append-result');
+  const runBtn = document.getElementById('append-run-btn');
+
+  setLoading(true); 
+  resultBox.textContent = 'Appending files & downloading...'; 
+  resultBox.style.background = '#eaf4fb';
+  runBtn.disabled = true;
+  
+  try {
+    const r = await fetch('/api/append-parquet', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ files: appendSelectedFiles, filename: fname })
+    });
+    
+    if(!r.ok){
+      const e = await r.json();
+      throw new Error(e.detail || 'Append failed');
+    }
+    
+    // Download logic
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; 
+    a.download = fname.endsWith('.parquet') ? fname : fname + '.parquet';
+    a.click(); 
+    URL.revokeObjectURL(url);
+    
+    resultBox.textContent = `✅ "${a.download}" downloaded successfully!`;
+    resultBox.style.background = '#d4edda';
+  } catch(e) {
+    resultBox.textContent = 'Error: ' + e.message;
+    resultBox.style.background = '#f8d7da';
+  } finally {
+    setLoading(false);
+    runBtn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
