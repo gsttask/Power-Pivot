@@ -616,6 +616,7 @@ async function createUser() {
     const r = await fetch('/api/admin/create-user', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'include', // <-- YEH LINE ADD KARNI HAI
       body: JSON.stringify({username, password, role})
     });
     
