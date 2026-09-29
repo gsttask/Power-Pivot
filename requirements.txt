@@ -5,3 +5,5 @@ pandas
 polars
 openpyxl
 python-multipart
+passlib
+bcrypt
